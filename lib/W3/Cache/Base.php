@@ -32,6 +32,7 @@ class W3_Cache_Base {
      * @var int
      */
     protected $_instance_id = 0;
+    protected $_memcached_compatibility_mode = false;
 
     /*
      * If we are going to return expired data when some other process
@@ -52,6 +53,8 @@ class W3_Cache_Base {
         $this->_module = isset($config['module']) ? $config['module'] : 'default';
         $this->_host = isset($config['host']) ? $config['host'] : '';
         $this->_instance_id = isset($config['instance_id']) ? $config['instance_id'] : 0;
+        $this->_memcached_compatibility_mode=  isset( $config['compatibility'])? $config['compatibility']:false;
+//        file_put_contents('/tmp/config', var_export($config, true));
     }
     /**
      * Adds data
@@ -179,6 +182,9 @@ class W3_Cache_Base {
      * @return string
      */
     public function get_item_key($name) {
+           if ( $this->_memcached_compatibility_mode) {
+               return $name;
+        }
         $key = sprintf('w3tc_key_%s_%d_%s_%s', $this->_host, $this->_blog_id, $this->_module, $name);
          /**
           * Allow to modify cache key by W3TC plugins

@@ -189,6 +189,9 @@ class W3_PgCacheFlush extends W3_PgCache {
             /**
              * Flush cache
              */
+            $full_urls = array_unique($full_urls);
+//                              file_put_contents('/tmp/flush.log', $post_id.  print_r($full_urls,true).PHP_EOL.PHP_EOL,FILE_APPEND);
+
             if (count($full_urls)) {
                 $this->_flushes++;
                 $cache = $this->_get_cache();
@@ -197,6 +200,8 @@ class W3_PgCacheFlush extends W3_PgCache {
                 $encryptions = $this->_get_encryptions();
                 $compressions = $this->_get_compressions();
                 foreach ($full_urls as $url) {
+//                        $this->flush_url($url, $cache, $mobile_groups, $referrer_groups, $encryptions, $compressions);
+//                                         continue;
                     if (!in_array($url, $this->_repeated_urls) && !in_array($url, $this->_flushed_urls)) {
                         $this->_flushed_urls[] = $url;
                         $this->flush_url($url, $cache, $mobile_groups, $referrer_groups, $encryptions, $compressions);
@@ -222,12 +227,17 @@ class W3_PgCacheFlush extends W3_PgCache {
      * @param $compressions
      */
     function _flush_url($url, $cache, $mobile_groups, $referrer_groups, $encryptions, $compressions) {
-        foreach ($mobile_groups as $mobile_group) {
+//                 file_put_contents('/tmp/flush-url.log', $url.' '.print_r(func_get_args(),true).PHP_EOL.PHP_EOL,FILE_APPEND);
+                
+      foreach ($mobile_groups as $mobile_group) {
             foreach ($referrer_groups as $referrer_group) {
                 foreach ($encryptions as $encryption) {
                     foreach ($compressions as $compression) {
+//                                         file_put_contents('/tmp/flush-url-deep.log', $url.' '.print_r(func_get_args(),true).PHP_EOL.PHP_EOL,FILE_APPEND);
+
                         $page_key = $this->_get_page_key($mobile_group, $referrer_group, $encryption, $compression, false, $url);
-                        $cache->delete($page_key);
+//                                                      file_put_contents('/tmp/flush-keys.log',$page_key.PHP_EOL.PHP_EOL,FILE_APPEND);
+           $cache->delete($page_key);
                     }
                 }
             }

@@ -246,6 +246,14 @@ $keys = array(
         'type' => 'boolean',
         'default' => true
     ),
+    'pgcache.memcached.compatibility' => array(
+        'type' => 'boolean',
+        'default' => false
+    ),
+    'pgcache.memcached.compatibility.prefix' => array(
+        'type' => 'string',
+        'default' => 'domain:'
+    ),
     'pgcache.check.domain' => array(
         'type' => 'boolean',
         'default' => false

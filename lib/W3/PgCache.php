@@ -44,6 +44,19 @@ class W3_PgCache {
      * @var boolean
      */
     var $_enhanced_mode = false;
+  /**
+     * Memcached compatibility mode flag
+     *
+     * @var boolean
+     */
+    var $_memcached_compatibility_mode = false;
+
+    /**
+     * Memcached compatibility mode prefix
+     *
+     * @var string
+     */
+    var $_memcached_compatibility_mode_prefix = '';
 
     /**
      * Debug flag
@@ -143,6 +156,8 @@ class W3_PgCache {
         $this->_lifetime = $this->_config->get_integer('pgcache.lifetime');
         $this->_late_init = $this->_config->get_boolean('pgcache.late_init');
         $this->_enhanced_mode = ($this->_config->get_string('pgcache.engine') == 'file_generic');
+        $this->_memcached_compatibility_mode = ($this->_config->get_string('pgcache.engine') == 'memcached' && $this->_config->get_boolean('pgcache.memcached.compatibility'));
+        $this->_memcached_compatibility_mode_prefix = $this->_config->get_string('pgcache.memcached.compatibility.prefix');
 
         if ($this->_config->get_boolean('mobile.enabled')) {
             $this->_mobile = w3_instance('W3_Mobile');
@@ -275,7 +290,8 @@ class W3_PgCache {
          * Do Bad Behavior check
          */
         $this->_bad_behavior();
-
+        if ($this->_memcached_compatibility_mode)
+            echo $data;
         $is_404 = $data['404'];
         $headers = $data['headers'];
         $time = $data['time'];
@@ -591,7 +607,8 @@ class W3_PgCache {
                 case 'memcached':
                     $engineConfig = array(
                         'servers' => $this->_config->get_array('pgcache.memcached.servers'),
-                        'persistant' => $this->_config->get_boolean('pgcache.memcached.persistant')
+                        'persistant' => $this->_config->get_boolean('pgcache.memcached.persistant'),
+                        'compatibility'=>$this->_config->get_boolean('pgcache.memcached.compatibility'),
                     );
                     break;
 
@@ -700,9 +717,9 @@ class W3_PgCache {
             if ($cookie_name == 'wordpress_test_cookie') {
                 continue;
             }
-            if (preg_match('/^(wp-postpass|comment_author)/', $cookie_name)) {
-                return false;
-            }
+//            if (preg_match('/^(wp-postpass|comment_author)/', $cookie_name)) {
+//                return false;
+//            }
         }
 
         foreach ($this->_config->get_array('pgcache.reject.cookie') as $reject_cookie) {
@@ -1033,6 +1050,10 @@ class W3_PgCache {
          */
         if ($compression) {
             $key .= '_' . $compression;
+        }
+        
+        if ($this->_memcached_compatibility_mode) {
+            $key = $this->_memcached_compatibility_mode_prefix .( $request_uri?parse_url($request_uri, PHP_URL_PATH):$this->_request_uri);
         }
 
         return $key;
@@ -1485,7 +1506,7 @@ class W3_PgCache {
         $time = time();
         $cache = $this->_get_cache();
 
-        /**
+         /**
          * Store different versions of cache
          */
         $buffers = array();
@@ -1501,27 +1522,29 @@ class W3_PgCache {
             $group = 'sitemaps';
 
         foreach ($compressions as $_compression) {
-            $_page_key = $this->_get_page_key($mobile_group,
-                $referrer_group, $encryption, $_compression,
-                $content_type);
-
-            /**
-             * Compress content
-             */
-            $buffers[$_compression] = $buffer;
-
-            $this->_compress($buffers[$_compression], $_compression);
+            $_page_key = $this->_get_page_key($mobile_group, $referrer_group, $encryption, $_compression, $content_type);
 
             /**
              * Store cache data
              */
-            $_data = array(
-                '404' => $is_404,
-                'headers' => $headers,
-                'time' => $time,
-                'content' => &$buffers[$_compression]
-            );
+            if ($this->_memcached_compatibility_mode) {
+                $_data = &$buffer;
+            } else {
+                /**
+                 * Compress content
+                 */
+                $buffers[$_compression] = $buffer;
+//            file_put_contents('/tmp/buffer', $buffer);
+                $this->_compress($buffers[$_compression], $_compression);
 
+                $_data = array(
+                    '404' => $is_404,
+                    'headers' => $headers,
+                    'time' => $time,
+                    'content' => &$buffers[$_compression]
+                );
+            }
+//            file_put_contents('/tmp/data', $_data);
             $cache->set($_page_key, $_data, $this->_lifetime, $group);
         }
 

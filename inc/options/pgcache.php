@@ -87,7 +87,23 @@
                         <?php endforeach; ?>
                     </div>
                 </th>
+        </tr>
+        <?php if ($this->_config->get_string('pgcache.engine') == 'memcached'): ?>
+            <tr>
+                <th>
+                    <input type="hidden" name="pgcache.memcached.compatibility" value="0" />
+                    <label><input type="checkbox" name="pgcache.memcached.compatibility" value="1"<?php checked($this->_config->get_boolean('pgcache.memcached.compatibility'), true); ?> /> Enable Memcached compatibility mode</label><br />
+                    <span class="description">Allows for easy use of nginx</span>
+                </th>
             </tr>
+            <tr>
+                <th>
+                    <input type="hidden" name="pgcache.memcached.compatibility.prefix" value="0" />
+                    <label><input type="text" name="pgcache.memcached.compatibility.prefix" value="<?php echo $this->_config->get_string('pgcache.memcached.compatibility.prefix'); ?>" size="8" /> <br/>Memcached compatibility mode prefix</label><br />
+                    <span class="description">This will be prepended to the Memcached key (used for uniqueness)</span>
+                </th>
+            </tr>
+        <?php endif; ?>
         </table>
 
         <p class="submit">

@@ -12,7 +12,7 @@ w3_require_once(W3TC_LIB_W3_DIR . '/Cache/Base.php');
 /**
  * Class W3_Cache_Memcached
  */
-class W3_Cache_Memcached extends W3_Cache_Base {
+class W3_Cache_Memcache extends W3_Cache_Base {
     /**
      * Memcache object
      *
@@ -35,30 +35,27 @@ class W3_Cache_Memcached extends W3_Cache_Base {
     function __construct($config) {
         parent::__construct($config);
         $this->_key_suffix=  isset($config['compatibility'])?'':'_' . $this->_blog_id;
+        $this->_memcache = new Memcache();
 
         if (!empty($config['servers'])) {
             $persistant = isset($config['persistant']) ? (boolean) $config['persistant'] : false;
-            @$this->_memcache = & new Memcached($persistant);
 
-            if (isset($config['compatibility'])) {
-                $this->_memcache->setOption(Memcached::OPT_COMPRESSION, false);
-            }
-
-            $servers = array();
             foreach ((array) $config['servers'] as $server) {
-                if (strpos($server, '/') !== false) {
-                    $servers[] = array(trim($server), 0);
-                } else {
+                if (substr($server, 0, 5) == 'unix:')
+                    $this->_memcache->addServer(trim($server), 0, $persistant);
+                else {
                     list($ip, $port) = explode(':', $server);
-                    $servers[] = array(trim($ip), (integer) trim($port), 0);
+                    $this->_memcache->addServer(trim($ip), (integer) trim($port), $persistant);
                 }
             }
-//            file_put_contents('/tmp/mc', var_export($servers,false));
-            $this->_memcache->addServers($servers);
         } else {
             return false;
         }
 
+        if (!empty($config['compress_threshold'])) {
+            $this->_memcache->setCompressThreshold((integer) $config['compress_threshold']);
+        }
+                    $this->_memcache->setCompressThreshold(20000, 1);
         return true;
     }
 
@@ -72,7 +69,7 @@ class W3_Cache_Memcached extends W3_Cache_Base {
      * @return boolean
      */
     function add($key, &$var, $expire = 0, $group = '0') {
-        return $this->set($key, $var, $expire, $group);     
+        return $this->set($key, $var, $expire, $group);
     }
 
     /**
@@ -86,13 +83,13 @@ class W3_Cache_Memcached extends W3_Cache_Base {
      */
     function set($key, $var, $expire = 0, $group = '0') {
         $key = $this->get_item_key($key) . $this->_key_suffix;
-        
-         if (is_array($var))
-            $var['key_version'] = $this->_get_key_version($group);
+        $var = is_scalar($var) ? trim((string)$var) : $var;
 
-//        file_put_contents('/tmp/memc.txt', var_export($var,false));
-
-        return @$this->_memcache->set($key, $var, $expire);
+if (is_string($var))$var='<'.$var;
+//        file_put_contents('/tmp/memc.txt',  $var);
+      if(!$config['compatibility'])  $var['key_version'] = $this->_get_key_version($group);
+        return @$this->_memcache->set($key , $var,
+            false, $expire);
     }
 
     /**
@@ -163,7 +160,7 @@ class W3_Cache_Memcached extends W3_Cache_Base {
      */
     function delete($key) {
         $key = $this->get_item_key($key);
-//        file_put_contents('/tmp/memc-delete.log', $key . PHP_EOL . PHP_EOL, FILE_APPEND);
+//                         file_put_contents('/tmp/memc-delete.log', $key.PHP_EOL.PHP_EOL,FILE_APPEND);
 
         if ($this->_use_expired_data) {
             $v = @$this->_memcache->get($key .  $this->_key_suffix);

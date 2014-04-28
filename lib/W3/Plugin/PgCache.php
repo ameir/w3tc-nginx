@@ -235,6 +235,8 @@ class W3_Plugin_PgCache extends W3_Plugin {
 
             if (is_null($post))
                 $post = $post_id;
+         //   $e = new Exception();
+//     file_put_contents('/tmp/debug_print_backtrace.log', $e->getTraceAsString().$post.PHP_EOL.PHP_EOL,FILE_APPEND);
 
             if (!w3_is_flushable_post($post, 'pgcache', $this->_config)) {
                 return;
